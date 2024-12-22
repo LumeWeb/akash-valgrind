@@ -37,16 +37,41 @@ if [ -n "$VALKEY_REQUIREPASS" ]; then
 fi
 
 # Start backup process if enabled
-if [ "$ENABLE_BACKUP" = "true" ]; then
+if [ "$BACKUP_ENABLED" = "true" ]; then
     if [ -z "$S3_ENDPOINT" ] || [ -z "$S3_ACCESS_KEY" ] || [ -z "$S3_SECRET_KEY" ] || [ -z "$S3_BUCKET" ]; then
         echo "Error: S3 configuration is incomplete. Please set all required environment variables."
         exit 1
     fi
     
-    # Create crontab file with the schedule from environment variable
-    echo "${BACKUP_SCHEDULE} /usr/local/bin/backup.sh" > /etc/crontab
+    # Check if a backup exists in S3
+    if [ -n "$(mc ls s3://${S3_BUCKET}/)" ]; then
+        # Check for corruption in Redis data
+        if redis-cli CHECK | grep -q "error"; then
+            # Test restore from the latest backup
+            if ! /usr/local/bin/backup.sh test-restore; then
+                echo "Error: Restore test failed"
+                exit 1
+            fi
+            # Restore data from the latest backup
+            /usr/local/bin/backup.sh restore
+        elif [ -z "$(ls -A ${REDIS_DATA_DIR})" ]; then
+            # Test restore from the latest backup
+            if ! /usr/local/bin/backup.sh test-restore; then
+                echo "Error: Restore test failed"
+                exit 1
+            fi
+            # Restore from the latest backup if data directory is empty
+            /usr/local/bin/backup.sh restore
+        fi
+    fi
     
-    echo "Starting backup cron service..."
+    # Schedule backups to S3 on a regular schedule
+    if [ -z "$BACKUP_SCHEDULE" ]; then
+        echo "Error: BACKUP_SCHEDULE environment variable is not set"
+        exit 1
+    fi
+    echo "${BACKUP_SCHEDULE} /usr/local/bin/backup.sh backup" > /etc/crontab
+    echo "0 0 1 * * /usr/local/bin/backup.sh test-restore" >> /etc/crontab
     supercronic /etc/crontab &
 fi
 
