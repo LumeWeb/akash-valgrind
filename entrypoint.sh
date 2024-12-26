@@ -75,5 +75,7 @@ if [ "$BACKUP_ENABLED" = "true" ]; then
     supercronic /etc/crontab &
 fi
 
+akash-metrics-exporter &
+
 # Delegate to the original entrypoint script with our generated config
 exec /usr/local/bin/docker-entrypoint.sh valkey-server "$CONFIG_FILE"

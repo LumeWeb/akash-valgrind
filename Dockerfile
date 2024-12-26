@@ -1,6 +1,8 @@
 # Define base image version
 ARG VALKEY_VERSION=8-alpine
+ARG METRICS_EXPORTER_VERSION=develop
 
+FROM ghcr.io/lumeweb/akash-metrics-exporter:${METRICS_EXPORTER_VERSION} AS metrics-exporter
 # Extend from valgrind
 FROM valkey/valkey:${VALKEY_VERSION}
 
@@ -37,6 +39,7 @@ ENV BACKUP_SCHEDULE="0 0 * * *"
 # Copy our scripts
 COPY backup.sh /usr/local/bin/
 COPY entrypoint.sh /entrypoint.sh
+COPY --from=metrics-exporter /usr/bin/metrics-exporter /usr/bin/akash-metrics-exporter
 
 ENTRYPOINT ["/entrypoint.sh"]
 EXPOSE 6379
