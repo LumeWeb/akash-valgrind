@@ -75,7 +75,24 @@ if [ "$BACKUP_ENABLED" = "true" ]; then
     supercronic /etc/crontab &
 fi
 
-akash-metrics-exporter &
+# Start metrics components if METRICS_PASSWORD is set
+if [ -n "$METRICS_PASSWORD" ]; then
+    # Start metrics-exporter
+    akash-metrics-exporter &
+    # Start redis_exporter with authentication
+    redis_exporter --redis.addr="redis://127.0.0.1:${VALKEY_PORT}" \
+                  --redis.password="$METRICS_PASSWORD" \
+                  --web.listen-address=":9121" &
+
+    # Start Akash metrics registrar
+    akash-metrics-registrar \
+        --target-host="localhost" \
+        --target-port=9121 \
+        --target-path="/metrics" \
+        --proxy-port=9090 \
+        --exporter-type="redis" \
+        --metrics-password="${METRICS_PASSWORD}" &
+fi
 
 # Delegate to the original entrypoint script with our generated config
 exec /usr/local/bin/docker-entrypoint.sh valkey-server "$CONFIG_FILE"
