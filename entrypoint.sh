@@ -89,7 +89,7 @@ if [ -n "$METRICS_PASSWORD" ]; then
         --target-host="localhost" \
         --target-port=9121 \
         --target-path="/metrics" \
-        --proxy-port=9090 \
+        --metrics-port=9090 \
         --exporter-type="redis" \
         --metrics-password="${METRICS_PASSWORD}" &
 fi
