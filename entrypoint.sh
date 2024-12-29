@@ -81,7 +81,7 @@ if [ -n "$METRICS_PASSWORD" ]; then
     akash-metrics-exporter &
     # Start redis_exporter with authentication
     redis_exporter --redis.addr="redis://127.0.0.1:${VALKEY_PORT}" \
-                  --redis.password="$METRICS_PASSWORD" \
+                  --redis.password="$VALKEY_REQUIREPASS" \
                   --web.listen-address=":9121" &
 
     # Start Akash metrics registrar
